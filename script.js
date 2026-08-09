@@ -185,3 +185,20 @@ function renderUI(projects, allCategories) {
 }
 
 loadProjects();
+
+// Cursor Glow Effect Tracker
+const glow = document.getElementById('cursor-glow');
+
+if (glow) {
+    window.addEventListener('mousemove', (e) => {
+        glow.style.left = `${e.clientX}px`;
+        glow.style.top = `${e.clientY}px`;
+        if (glow.style.opacity !== '1') {
+            glow.style.opacity = '1';
+        }
+    });
+
+    document.addEventListener('mouseleave', () => {
+        glow.style.opacity = '0';
+    });
+}

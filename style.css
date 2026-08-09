@@ -348,3 +348,29 @@ body {
     align-items: center;
     gap: 0.3rem;
 }
+
+/* Cursor Glow Effect */
+.cursor-glow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(161, 10, 113, 0.3) 0%,
+        transparent 70%
+    );
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.3s ease;
+    z-index: 0;
+    opacity: 0;
+}
+
+/* Ensure foreground content sits above the glow */
+.navbar, .container {
+    position: relative;
+    z-index: 1;
+}
