@@ -168,11 +168,11 @@ function renderUI(projects, allCategories) {
 
             // Combine Elements into Card
             card.innerHTML = `
-                ${imageHtml}
                 <div class="project-header">
                     <h2 class="project-title">${p['Overall project title']}</h2>
                     <span class="project-date">${p['Month (Range)']} ${p['Year (Range)']}</span>
                 </div>
+                ${imageHtml}
                 <div class="tags-container">${tagsHtml}</div>
                 <div class="project-desc">${parseLinks(p['Description'])}</div>
                 ${linksHtml}
