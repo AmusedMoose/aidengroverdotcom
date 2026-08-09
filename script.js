@@ -23,17 +23,17 @@ function parseCSV(text) {
     return ret;
 }
 
-// Parses raw URLs and Markdown [Text](URL) into clickable <a> tags
+// Parses raw URLs, local relative asset paths, and Markdown [Text](URL/Path) into clickable <a> tags
 function parseLinks(text) {
     if (!text) return '';
 
-    // 1. Parse Markdown links [Anchor Text](https://link.com)
+    // 1. Parse Markdown links: [Anchor Text](https://link.com OR assets/file.pdf)
     let formatted = text.replace(
-        /\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g,
+        /\[([^\]]+)\]\(((?:https?:\/\/|\/|\.\/|\.\.\/|assets\/)[^\s\)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
     );
 
-    // 2. Parse remaining raw http/https URLs not already in <a> tags
+    // 2. Parse remaining raw http/https URLs not already wrapped in <a> tags
     formatted = formatted.replace(
         (/(^|[\s(])(https?:\/\/[^\s\)]+)/g),
         '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>'
@@ -52,7 +52,7 @@ async function loadProjects() {
         if (rows.length < 2) return;
 
         const headers = rows[0].map(h => h.trim());
-        const dataRows = rows.slice(1).filter(r => r.length >= headers.length && r[1]); // Row index 1 matches Priority
+        const dataRows = rows.slice(1).filter(r => r.length >= headers.length && r[0]);
 
         const categoryColumns = ['CAD', '3D Printing', 'LEGO', 'PCB Design / Electronics', 'Coding', 'Science Fair', 'Blender', 'Other'];
 
@@ -83,7 +83,7 @@ async function loadProjects() {
         document.getElementById('projects-container').innerHTML = `
             <div class="error">
                 <strong>Error loading projects:</strong> ${err.message}<br><br>
-                <small>Note: If opening directly via browser (file://), run a quick local server (e.g., <code>python3 -m http.server</code>) to bypass CORS restrictions.</small>
+                <small>Note: If opening directly via browser (file://), run a local server (e.g., <code>python3 -m http.server</code>) to bypass CORS restrictions.</small>
             </div>
         `;
     }
@@ -95,7 +95,7 @@ function renderUI(projects, allCategories) {
 
     container.innerHTML = '';
 
-    // Add dynamic filter buttons
+    // Add dynamic filter buttons for active categories
     allCategories.forEach(cat => {
         if (projects.some(p => p.activeCategories.includes(cat))) {
             const btn = document.createElement('button');
@@ -131,29 +131,50 @@ function renderUI(projects, allCategories) {
             const card = document.createElement('div');
             card.className = 'project-card';
 
-            // Format footer links
-            let linksHtml = '';
-            if (p['Image/link/etc']) {
-                const rawLinks = p['Image/link/etc'].split('\n');
-                linksHtml = '<div class="links-container">' + rawLinks.map(l => {
-                    l = l.trim();
-                    if (!l) return '';
-                    let url = l.startsWith('http') ? l : 'https://' + l;
-                    let label = l.replace(/^https?:\/\//, '').split('/')[0];
-                    return `<a href="${url}" class="project-link" target="_blank" rel="noopener noreferrer">🔗 ${label}</a>`;
-                }).join('') + '</div>';
+            // 1. Header Image Block
+            let imageHtml = '';
+            if (p['Header Image']) {
+                imageHtml = `
+                    <div class="project-image-container">
+                        <img src="${p['Header Image']}" alt="${p['Overall project title']}" class="project-image" onerror="this.style.display='none'">
+                    </div>
+                `;
             }
 
-            // Format tags
+            // 2. Dedicated Links Block
+            let linksHtml = '';
+            if (p['Links']) {
+                const rawLinks = p['Links'].split('\n');
+                const validLinks = rawLinks.map(l => l.trim()).filter(l => l.length > 0);
+
+                if (validLinks.length > 0) {
+                    linksHtml = '<div class="links-container">' + validLinks.map(l => {
+                        let isUrl = l.startsWith('http://') || l.startsWith('https://') || l.includes('.com') || l.includes('.org') || l.includes('.net');
+                        let url = l.startsWith('http') ? l : 'https://' + l;
+                        let label = l.replace(/^https?:\/\//, '').split('/')[0];
+
+                        // If line isn't a direct URL (e.g. placeholder text), render as note or plain link
+                        if (!isUrl) {
+                            return `<span class="project-link-note">📌 ${l}</span>`;
+                        }
+
+                        return `<a href="${url}" class="project-link" target="_blank" rel="noopener noreferrer">🔗 ${label}</a>`;
+                    }).join('') + '</div>';
+                }
+            }
+
+            // 3. Category Tags Block
             let tagsHtml = p.activeCategories.map(cat => `<span class="tag">${cat}</span>`).join('');
 
+            // Combine Elements into Card
             card.innerHTML = `
+                ${imageHtml}
                 <div class="project-header">
                     <h2 class="project-title">${p['Overall project title']}</h2>
                     <span class="project-date">${p['Month (Range)']} ${p['Year (Range)']}</span>
                 </div>
                 <div class="tags-container">${tagsHtml}</div>
-                <div class="project-desc">${parseLinks(p.Description)}</div>
+                <div class="project-desc">${parseLinks(p['Description'])}</div>
                 ${linksHtml}
             `;
             container.appendChild(card);

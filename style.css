@@ -306,3 +306,33 @@ body {
 .project-desc a:hover {
     color: var(--accent);
 }
+
+/* Project Header Image */
+.project-image-container {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    background-color: var(--pill-bg);
+    border: 1px solid var(--border);
+}
+
+.project-image {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    display: block;
+}
+
+.project-card:hover .project-image {
+    transform: scale(1.02);
+}
+
+/* Link Notes / Placeholders */
+.project-link-note {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
