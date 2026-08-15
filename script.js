@@ -131,14 +131,36 @@ function renderUI(projects, allCategories) {
             const card = document.createElement('div');
             card.className = 'project-card';
 
-            // 1. Header Image Block
+            // 1. Header Media Block (Supports multi-line images and videos)
             let imageHtml = '';
             if (p['Header Image']) {
-                imageHtml = `
-                    <div class="project-image-container">
-                        <img src="${p['Header Image']}" alt="${p['Overall project title']}" class="project-image" onerror="this.style.display='none'">
-                    </div>
-                `;
+                const mediaFiles = p['Header Image'].split('\n').map(m => m.trim()).filter(m => m.length > 0);
+
+                if (mediaFiles.length > 0) {
+                    let mediaElements = mediaFiles.map(file => {
+                        const isVideo = file.toLowerCase().endsWith('.mov') || file.toLowerCase().endsWith('.mp4') || file.toLowerCase().endsWith('.webm');
+
+                        if (isVideo) {
+                            return `
+                                <video class="project-media project-video" autoplay loop muted playsinline>
+                                    <source src="${file}" type="video/quicktime">
+                                    <source src="${file}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            `;
+                        } else {
+                            return `
+                                <img src="${file}" alt="${p['Overall project title']}" class="project-media project-image" onerror="this.style.display='none'">
+                            `;
+                        }
+                    }).join('');
+
+                    imageHtml = `
+                        <div class="project-image-container">
+                            ${mediaElements}
+                        </div>
+                    `;
+                }
             }
 
             // 2. Dedicated Links Block
@@ -153,7 +175,6 @@ function renderUI(projects, allCategories) {
                         let url = l.startsWith('http') ? l : 'https://' + l;
                         let label = l.replace(/^https?:\/\//, '').split('/')[0];
 
-                        // If line isn't a direct URL (e.g. placeholder text), render as note or plain link
                         if (!isUrl) {
                             return `<span class="project-link-note">📌 ${l}</span>`;
                         }
@@ -186,9 +207,8 @@ function renderUI(projects, allCategories) {
 
 loadProjects();
 
-// Cursor Glow Effect Tracker
+// Cursor Glow Tracker
 const glow = document.getElementById('cursor-glow');
-
 if (glow) {
     window.addEventListener('mousemove', (e) => {
         glow.style.left = `${e.clientX}px`;

@@ -374,3 +374,26 @@ body {
     position: relative;
     z-index: 1;
 }
+
+/* Media Container & Video Support */
+.project-image-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.project-media {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    background-color: var(--pill-bg);
+    border: 1px solid var(--border);
+    display: block;
+    object-fit: contain;
+}
+
+.project-video {
+    outline: none;
+}
