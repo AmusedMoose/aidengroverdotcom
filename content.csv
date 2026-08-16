@@ -25,4 +25,5 @@ make github repo
 make github repo
 make github repo
 make github repo",assets/pcbblood.png,"I started working with Dr. Masaru Rao's lab at UCR in 2025, designing PCBs for a paper testing the viability of a light-based approach to study blood clotting on a model blood vessel. Learned KiCad and made several circuits to help with this project, including Arduino and STM32, integration and FPCBs. Paper is currently under review."
+Scroll Bar with Variable Capacitive Touch,8,August 2026 - Present,,,,,x,x,,,,make github repo,assets/capacitivescroll.mp4|sound,"As another test to learn capacitive sensing, I made this scroll bar which uses multiple pads to accurately interpret a finger’s position. In the above demo I use this to alter the frequency of a buzzer, but it can also be hooked up to a keyboard to act as a scroll wheel."
 More to come soon!,9999,,,x,x,x,x,x,x,x,x,,,I am currently updating this website with my various projects. Much more to appear soon!

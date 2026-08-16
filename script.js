@@ -75,7 +75,7 @@ async function loadProjects() {
         });
 
         // Sort by Priority ascending (1, 2, 3...)
-        projects.sort((a, b) => parseInt(a.Priority || 99) - parseInt(b.Priority || 99));
+        projects.sort((a, b) => parseInt(a.Priority || 9999) - parseInt(b.Priority || 9999));
 
         renderUI(projects, categoryColumns);
 
@@ -131,23 +131,40 @@ function renderUI(projects, allCategories) {
             const card = document.createElement('div');
             card.className = 'project-card';
 
-            // 1. Header Media Block (Supports multi-line images and videos)
+            // 1. Header Media Block (Supports multi-line images and audio/silent video tags)
             let imageHtml = '';
             if (p['Header Image']) {
-                const mediaFiles = p['Header Image'].split('\n').map(m => m.trim()).filter(m => m.length > 0);
+                const mediaLines = p['Header Image'].split('\n').map(m => m.trim()).filter(m => m.length > 0);
 
-                if (mediaFiles.length > 0) {
-                    let mediaElements = mediaFiles.map(file => {
-                        const isVideo = file.toLowerCase().endsWith('.mov') || file.toLowerCase().endsWith('.mp4') || file.toLowerCase().endsWith('.webm');
+                if (mediaLines.length > 0) {
+                    let mediaElements = mediaLines.map(line => {
+                        const parts = line.split('|');
+                        const file = parts[0].trim();
+                        const flags = parts.slice(1).map(f => f.toLowerCase().trim());
+                        const hasAudio = flags.includes('sound') || flags.includes('audio');
+
+                        const isVideo = file.toLowerCase().endsWith('.mov') ||
+                            file.toLowerCase().endsWith('.mp4') ||
+                            file.toLowerCase().endsWith('.webm');
 
                         if (isVideo) {
-                            return `
-                                <video class="project-media project-video" autoplay loop muted playsinline>
-                                    <source src="${file}" type="video/quicktime">
-                                    <source src="${file}" type="video/mp4">
-                                    Your browser does not support the video tag.
-                                </video>
-                            `;
+                            if (hasAudio) {
+                                return `
+                                    <video class="project-media project-video" controls playsinline loop preload="metadata">
+                                        <source src="${file}" type="video/mp4">
+                                        <source src="${file}" type="video/quicktime">
+                                        Your browser does not support the video tag.
+                                    </video>
+                                `;
+                            } else {
+                                return `
+                                    <video class="project-media project-video" autoplay loop muted playsinline>
+                                        <source src="${file}" type="video/mp4">
+                                        <source src="${file}" type="video/quicktime">
+                                        Your browser does not support the video tag.
+                                    </video>
+                                `;
+                            }
                         } else {
                             return `
                                 <img src="${file}" alt="${p['Overall project title']}" class="project-media project-image" onerror="this.style.display='none'">
