@@ -289,7 +289,7 @@ function initCarousels() {
             images[currentIndex].classList.remove('active');
             currentIndex = (currentIndex + 1) % images.length;
             images[currentIndex].classList.add('active');
-        }, 1000); // 1 second interval
+        }, 2000); // 1 second interval
 
         carouselIntervals.push(intervalId);
     });
