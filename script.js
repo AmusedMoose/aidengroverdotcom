@@ -1,26 +1,53 @@
-// Robust CSV parser handling multiline quotes and commas
+// Global array to manage active carousel timers
+let carouselIntervals = [];
+
+// Stateful CSV parser that correctly handles multiline values inside quoted fields
 function parseCSV(text) {
-    let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0;
-    for (let l of text) {
-        if ('"' === l) {
-            if (s && l === p) row[row.length - 1] += l;
-            s = !s;
-        } else if (',' === l && s) {
-            row.push(p = '');
-        } else if ('\r' === l && s) {
-            // skip carriage return
-        } else if ('\n' === l && s) {
-            if (p === '' && row.length === 1 && row[0] === '') {
-                continue;
+    let rows = [];
+    let currentRow = [];
+    let currentField = '';
+    let insideQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+        let char = text[i];
+        let nextChar = text[i + 1];
+
+        if (char === '"') {
+            if (insideQuotes && nextChar === '"') {
+                // Handle escaped quotes ("")
+                currentField += '"';
+                i++;
+            } else {
+                // Toggle quote state
+                insideQuotes = !insideQuotes;
             }
-            row = [p = ''];
-            ret.push(row);
+        } else if (char === ',' && !insideQuotes) {
+            // End of field
+            currentRow.push(currentField);
+            currentField = '';
+        } else if ((char === '\r' || char === '\n') && !insideQuotes) {
+            // End of row (skip \r in \r\n pairs)
+            if (char === '\r' && nextChar === '\n') {
+                i++;
+            }
+            currentRow.push(currentField);
+            if (currentRow.length > 1 || currentRow[0] !== '') {
+                rows.push(currentRow);
+            }
+            currentRow = [];
+            currentField = '';
         } else {
-            p += l;
-            row[row.length - 1] = p;
+            currentField += char;
         }
     }
-    return ret;
+
+    // Push final field/row if text doesn't end with a newline
+    if (currentField !== '' || currentRow.length > 0) {
+        currentRow.push(currentField);
+        rows.push(currentRow);
+    }
+
+    return rows;
 }
 
 // Parses raw URLs, local relative asset paths, and Markdown [Text](URL/Path) into clickable <a> tags
@@ -45,14 +72,15 @@ function parseLinks(text) {
 async function loadProjects() {
     try {
         const response = await fetch('content.csv');
-        if (!response.ok) throw new Error('Could not load content.csv. Make sure it is in the same directory!');
+        if (!response.ok) throw new Error('Could not load content.csv');
         const csvText = await response.text();
 
         const rows = parseCSV(csvText);
         if (rows.length < 2) return;
 
         const headers = rows[0].map(h => h.trim());
-        const dataRows = rows.slice(1).filter(r => r.length >= headers.length && r[0]);
+        // Updated filter logic: ensure row exists and has at least a title
+        const dataRows = rows.slice(1).filter(r => r.length > 1 && r[0] && r[0].trim() !== '');
 
         const categoryColumns = ['CAD', '3D Printing', 'LEGO', 'PCB Design / Electronics', 'Coding', 'Science Fair', 'Blender', 'Other'];
 
@@ -62,7 +90,6 @@ async function loadProjects() {
                 obj[header] = row[index] !== undefined ? row[index].trim() : '';
             });
 
-            // Extract active categories marked with 'x'
             let activeCategories = [];
             categoryColumns.forEach(cat => {
                 if (obj[cat] && obj[cat].toLowerCase() === 'x') {
@@ -74,16 +101,13 @@ async function loadProjects() {
             return obj;
         });
 
-        // Sort by Priority ascending (1, 2, 3...)
         projects.sort((a, b) => parseInt(a.Priority || 9999) - parseInt(b.Priority || 9999));
-
         renderUI(projects, categoryColumns);
 
     } catch (err) {
         document.getElementById('projects-container').innerHTML = `
             <div class="error">
-                <strong>Error loading projects:</strong> ${err.message}<br><br>
-                <small>Note: If opening directly via browser (file://), run a local server (e.g., <code>python3 -m http.server</code>) to bypass CORS restrictions.</small>
+                <strong>Error loading projects:</strong> ${err.message}
             </div>
         `;
     }
@@ -117,6 +141,10 @@ function renderUI(projects, allCategories) {
     });
 
     function displayFilteredProjects() {
+        // Clear any running carousel intervals before re-rendering
+        carouselIntervals.forEach(clearInterval);
+        carouselIntervals = [];
+
         container.innerHTML = '';
         const filtered = currentFilter === 'All'
             ? projects
@@ -131,52 +159,77 @@ function renderUI(projects, allCategories) {
             const card = document.createElement('div');
             card.className = 'project-card';
 
-            // 1. Header Media Block (Supports multi-line images and audio/silent video tags)
+            // 1. Header Media Block (Supports images, videos, audio flags, and carousels)
             let imageHtml = '';
             if (p['Header Image']) {
                 const mediaLines = p['Header Image'].split('\n').map(m => m.trim()).filter(m => m.length > 0);
 
                 if (mediaLines.length > 0) {
-                    let mediaElements = mediaLines.map(line => {
+                    // Parse paths and metadata flags
+                    const cleanedMedia = mediaLines.map(line => {
                         const parts = line.split('|');
                         const file = parts[0].trim();
                         const flags = parts.slice(1).map(f => f.toLowerCase().trim());
-                        const hasAudio = flags.includes('sound') || flags.includes('audio');
+                        return { file, flags };
+                    });
 
-                        const isVideo = file.toLowerCase().endsWith('.mov') ||
-                            file.toLowerCase().endsWith('.mp4') ||
-                            file.toLowerCase().endsWith('.webm');
+                    const isCarousel = cleanedMedia.some(item => item.flags.includes('carousel'));
 
-                        if (isVideo) {
-                            if (hasAudio) {
-                                return `
-                                    <video class="project-media project-video" controls playsinline loop preload="metadata">
-                                        <source src="${file}" type="video/mp4">
-                                        <source src="${file}" type="video/quicktime">
-                                        Your browser does not support the video tag.
-                                    </video>
-                                `;
+                    if (isCarousel) {
+                        // Render Carousel Container
+                        let imgsHtml = cleanedMedia.map((item, idx) => {
+                            const activeClass = idx === 0 ? ' active' : '';
+                            return `<img src="${item.file}" alt="${p['Overall project title']}" class="carousel-img${activeClass}" onerror="this.style.display='none'">`;
+                        }).join('');
+
+                        imageHtml = `
+                            <div class="project-image-container">
+                                <div class="project-carousel">
+                                    ${imgsHtml}
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // Standard Vertical Media List
+                        let mediaElements = cleanedMedia.map(item => {
+                            const file = item.file;
+                            const hasAudio = item.flags.includes('sound') || item.flags.includes('audio');
+
+                            const isVideo = file.toLowerCase().endsWith('.mov') ||
+                                file.toLowerCase().endsWith('.mp4') ||
+                                file.toLowerCase().endsWith('.webm');
+
+                            if (isVideo) {
+                                if (hasAudio) {
+                                    return `
+                                        <video class="project-media project-video" controls playsinline loop preload="metadata">
+                                            <source src="${file}" type="video/mp4">
+                                            <source src="${file}" type="video/quicktime">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    `;
+                                } else {
+                                    return `
+                                        <video class="project-media project-video" autoplay loop muted playsinline>
+                                            <source src="${file}" type="video/mp4">
+                                            <source src="${file}" type="video/quicktime">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    `;
+                                }
                             } else {
                                 return `
-                                    <video class="project-media project-video" autoplay loop muted playsinline>
-                                        <source src="${file}" type="video/mp4">
-                                        <source src="${file}" type="video/quicktime">
-                                        Your browser does not support the video tag.
-                                    </video>
+                                    <img src="${file}" alt="${p['Overall project title']}" class="project-media project-image" onerror="this.style.display='none'">
                                 `;
                             }
-                        } else {
-                            return `
-                                <img src="${file}" alt="${p['Overall project title']}" class="project-media project-image" onerror="this.style.display='none'">
-                            `;
-                        }
-                    }).join('');
+                        }).join('');
 
-                    imageHtml = `
-                        <div class="project-image-container">
-                            ${mediaElements}
-                        </div>
-                    `;
+                        imageHtml = `
+                            <div class="project-image-container">
+                                ${mediaElements}
+                            </div>
+                        `;
+                    }
                 }
             }
 
@@ -217,9 +270,29 @@ function renderUI(projects, allCategories) {
             `;
             container.appendChild(card);
         });
+
+        // Initialize Carousel Timers (Flips every 1000ms)
+        initCarousels();
     }
 
     displayFilteredProjects();
+}
+
+function initCarousels() {
+    const carousels = document.querySelectorAll('.project-carousel');
+    carousels.forEach(carousel => {
+        const images = carousel.querySelectorAll('.carousel-img');
+        if (images.length <= 1) return;
+
+        let currentIndex = 0;
+        const intervalId = setInterval(() => {
+            images[currentIndex].classList.remove('active');
+            currentIndex = (currentIndex + 1) % images.length;
+            images[currentIndex].classList.add('active');
+        }, 1000); // 1 second interval
+
+        carouselIntervals.push(intervalId);
+    });
 }
 
 loadProjects();
