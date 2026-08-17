@@ -90,12 +90,27 @@ body {
     margin: 0 0 1.5rem 0;
 }
 
+/* Hero Bio Text */
 .hero-bio {
     font-size: 1.125rem;
-    color: var(--text-muted);
-    max-width: 750px;
-    margin-bottom: 2rem;
     line-height: 1.6;
+    color: var(--text-secondary, #a1a1aa);
+    max-width: 650px;
+    margin: 1rem 0 1.5rem 0;
+}
+
+/* Links inside Hero Bio */
+.hero-bio a {
+    color: var(--accent, #60a5fa);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px dashed var(--accent, #60a5fa);
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.hero-bio a:hover {
+    color: var(--accent-hover, #93c5fd);
+    border-bottom-style: solid;
 }
 
 /* Contact Links */
