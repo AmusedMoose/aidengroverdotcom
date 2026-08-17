@@ -1,7 +1,7 @@
-// Global array to manage active carousel timers
+// Global array to track carousel intervals across re-renders
 let carouselIntervals = [];
 
-// Stateful CSV parser that correctly handles multiline values inside quoted fields
+// Stateful CSV parser handling embedded quotes, commas, and multiline cells
 function parseCSV(text) {
     let rows = [];
     let currentRow = [];
@@ -14,19 +14,15 @@ function parseCSV(text) {
 
         if (char === '"') {
             if (insideQuotes && nextChar === '"') {
-                // Handle escaped quotes ("")
                 currentField += '"';
                 i++;
             } else {
-                // Toggle quote state
                 insideQuotes = !insideQuotes;
             }
         } else if (char === ',' && !insideQuotes) {
-            // End of field
             currentRow.push(currentField);
             currentField = '';
         } else if ((char === '\r' || char === '\n') && !insideQuotes) {
-            // End of row (skip \r in \r\n pairs)
             if (char === '\r' && nextChar === '\n') {
                 i++;
             }
@@ -41,7 +37,6 @@ function parseCSV(text) {
         }
     }
 
-    // Push final field/row if text doesn't end with a newline
     if (currentField !== '' || currentRow.length > 0) {
         currentRow.push(currentField);
         rows.push(currentRow);
@@ -50,17 +45,34 @@ function parseCSV(text) {
     return rows;
 }
 
-// Parses raw URLs, local relative asset paths, and Markdown [Text](URL/Path) into clickable <a> tags
-function parseLinks(text) {
+function parseDescription(text) {
     if (!text) return '';
 
-    // 1. Parse Markdown links: [Anchor Text](https://link.com OR assets/file.pdf)
-    let formatted = text.replace(
+    let formatted = text;
+
+    // 1. Convert literal '\n' sequences into actual newline breaks
+    formatted = formatted.replace(/\\n/g, '\n');
+
+    // 2. Parse Markdown Bold & Italic formatting
+    // ***bold italic*** or ___bold italic___
+    formatted = formatted.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    formatted = formatted.replace(/___(.*?)___/g, '<strong><em>$1</em></strong>');
+
+    // **bold** or __bold__
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+    // *italic* or _italic_
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    formatted = formatted.replace(/_(.*?)(?<!_)_{1}(?!_)/g, '<em>$1</em>');
+
+    // 3. Parse Markdown links: [Anchor Text](https://link.com)
+    formatted = formatted.replace(
         /\[([^\]]+)\]\(((?:https?:\/\/|\/|\.\/|\.\.\/|assets\/)[^\s\)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
     );
 
-    // 2. Parse remaining raw http/https URLs not already wrapped in <a> tags
+    // 4. Parse remaining raw http/https URLs
     formatted = formatted.replace(
         (/(^|[\s(])(https?:\/\/[^\s\)]+)/g),
         '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>'
@@ -72,14 +84,13 @@ function parseLinks(text) {
 async function loadProjects() {
     try {
         const response = await fetch('content.csv');
-        if (!response.ok) throw new Error('Could not load content.csv');
+        if (!response.ok) throw new Error('Could not load content.csv. Make sure it is in the root directory!');
         const csvText = await response.text();
 
         const rows = parseCSV(csvText);
         if (rows.length < 2) return;
 
         const headers = rows[0].map(h => h.trim());
-        // Updated filter logic: ensure row exists and has at least a title
         const dataRows = rows.slice(1).filter(r => r.length > 1 && r[0] && r[0].trim() !== '');
 
         const categoryColumns = ['CAD', '3D Printing', 'LEGO', 'PCB Design / Electronics', 'Coding', 'Science Fair', 'Blender', 'Other'];
@@ -101,13 +112,16 @@ async function loadProjects() {
             return obj;
         });
 
+        // Sort by Priority ascending
         projects.sort((a, b) => parseInt(a.Priority || 9999) - parseInt(b.Priority || 9999));
+
         renderUI(projects, categoryColumns);
 
     } catch (err) {
         document.getElementById('projects-container').innerHTML = `
             <div class="error">
-                <strong>Error loading projects:</strong> ${err.message}
+                <strong>Error loading projects:</strong> ${err.message}<br><br>
+                <small>Note: Run via a local web server (e.g., <code>python3 -m http.server</code>) to prevent browser CORS blocks.</small>
             </div>
         `;
     }
@@ -119,7 +133,7 @@ function renderUI(projects, allCategories) {
 
     container.innerHTML = '';
 
-    // Add dynamic filter buttons for active categories
+    // Create Category filter buttons dynamically
     allCategories.forEach(cat => {
         if (projects.some(p => p.activeCategories.includes(cat))) {
             const btn = document.createElement('button');
@@ -130,7 +144,6 @@ function renderUI(projects, allCategories) {
         }
     });
 
-    // Filter handling
     let currentFilter = 'All';
     filterBar.addEventListener('click', (e) => {
         if (!e.target.classList.contains('filter-btn')) return;
@@ -141,7 +154,7 @@ function renderUI(projects, allCategories) {
     });
 
     function displayFilteredProjects() {
-        // Clear any running carousel intervals before re-rendering
+        // Stop all running carousel intervals when filter changes
         carouselIntervals.forEach(clearInterval);
         carouselIntervals = [];
 
@@ -159,13 +172,12 @@ function renderUI(projects, allCategories) {
             const card = document.createElement('div');
             card.className = 'project-card';
 
-            // 1. Header Media Block (Supports images, videos, audio flags, and carousels)
+            // 1. Header Media Rendering
             let imageHtml = '';
             if (p['Header Image']) {
                 const mediaLines = p['Header Image'].split('\n').map(m => m.trim()).filter(m => m.length > 0);
 
                 if (mediaLines.length > 0) {
-                    // Parse paths and metadata flags
                     const cleanedMedia = mediaLines.map(line => {
                         const parts = line.split('|');
                         const file = parts[0].trim();
@@ -176,7 +188,6 @@ function renderUI(projects, allCategories) {
                     const isCarousel = cleanedMedia.some(item => item.flags.includes('carousel'));
 
                     if (isCarousel) {
-                        // Render Carousel Container
                         let imgsHtml = cleanedMedia.map((item, idx) => {
                             const activeClass = idx === 0 ? ' active' : '';
                             return `<img src="${item.file}" alt="${p['Overall project title']}" class="carousel-img${activeClass}" onerror="this.style.display='none'">`;
@@ -190,11 +201,9 @@ function renderUI(projects, allCategories) {
                             </div>
                         `;
                     } else {
-                        // Standard Vertical Media List
                         let mediaElements = cleanedMedia.map(item => {
                             const file = item.file;
                             const hasAudio = item.flags.includes('sound') || item.flags.includes('audio');
-
                             const isVideo = file.toLowerCase().endsWith('.mov') ||
                                 file.toLowerCase().endsWith('.mp4') ||
                                 file.toLowerCase().endsWith('.webm');
@@ -205,7 +214,6 @@ function renderUI(projects, allCategories) {
                                         <video class="project-media project-video" controls playsinline loop preload="metadata">
                                             <source src="${file}" type="video/mp4">
                                             <source src="${file}" type="video/quicktime">
-                                            Your browser does not support the video tag.
                                         </video>
                                     `;
                                 } else {
@@ -213,7 +221,6 @@ function renderUI(projects, allCategories) {
                                         <video class="project-media project-video" autoplay loop muted playsinline>
                                             <source src="${file}" type="video/mp4">
                                             <source src="${file}" type="video/quicktime">
-                                            Your browser does not support the video tag.
                                         </video>
                                     `;
                                 }
@@ -233,7 +240,7 @@ function renderUI(projects, allCategories) {
                 }
             }
 
-            // 2. Dedicated Links Block
+            // 2. Links Section Parsing
             let linksHtml = '';
             if (p['Links']) {
                 const rawLinks = p['Links'].split('\n');
@@ -241,8 +248,8 @@ function renderUI(projects, allCategories) {
 
                 if (validLinks.length > 0) {
                     linksHtml = '<div class="links-container">' + validLinks.map(l => {
-                        let isUrl = l.startsWith('http://') || l.startsWith('https://') || l.includes('.com') || l.includes('.org') || l.includes('.net');
-                        let url = l.startsWith('http') ? l : 'https://' + l;
+                        let isUrl = l.startsWith('http://') || l.startsWith('https://') || l.includes('.com') || l.includes('.org') || l.includes('.net') || l.includes('.pdf');
+                        let url = l.startsWith('http') ? l : (l.startsWith('assets/') ? l : 'https://' + l);
                         let label = l.replace(/^https?:\/\//, '').split('/')[0];
 
                         if (!isUrl) {
@@ -254,10 +261,10 @@ function renderUI(projects, allCategories) {
                 }
             }
 
-            // 3. Category Tags Block
+            // 3. Category Tags
             let tagsHtml = p.activeCategories.map(cat => `<span class="tag">${cat}</span>`).join('');
 
-            // Combine Elements into Card
+            // Build Project Card HTML
             card.innerHTML = `
                 <div class="project-header">
                     <h2 class="project-title">${p['Overall project title']}</h2>
@@ -265,13 +272,12 @@ function renderUI(projects, allCategories) {
                 </div>
                 ${imageHtml}
                 <div class="tags-container">${tagsHtml}</div>
-                <div class="project-desc">${parseLinks(p['Description'])}</div>
+                <div class="project-desc">${parseDescription(p['Description'])}</div>
                 ${linksHtml}
             `;
             container.appendChild(card);
         });
 
-        // Initialize Carousel Timers (Flips every 1000ms)
         initCarousels();
     }
 
@@ -289,7 +295,7 @@ function initCarousels() {
             images[currentIndex].classList.remove('active');
             currentIndex = (currentIndex + 1) % images.length;
             images[currentIndex].classList.add('active');
-        }, 2000); // 1 second interval
+        }, 2000);
 
         carouselIntervals.push(intervalId);
     });
