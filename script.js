@@ -53,7 +53,28 @@ function parseDescription(text) {
     // 1. Convert literal '\n' sequences into actual newline breaks
     formatted = formatted.replace(/\\n/g, '\n');
 
-    // 2. Parse Markdown Bold & Italic formatting
+    let protectedLinks = [];
+
+    // 2. Protect Markdown Links: [Anchor Text](url)
+    // Using @@@ as a safe boundary that won't trigger markdown italics/bolding
+    formatted = formatted.replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        (match, textPart, urlPart) => {
+            protectedLinks.push(`<a href="${urlPart}" target="_blank" rel="noopener noreferrer">${textPart}</a>`);
+            return `@@@LINK${protectedLinks.length - 1}@@@`;
+        }
+    );
+
+    // 3. Protect Raw URLs (http/https or assets/)
+    formatted = formatted.replace(
+        /(^|[\s(])(https?:\/\/[^\s\)]+|assets\/[^\s\)]+)/g,
+        (match, prefix, urlPart) => {
+            protectedLinks.push(`<a href="${urlPart}" target="_blank" rel="noopener noreferrer">${urlPart}</a>`);
+            return `${prefix}@@@LINK${protectedLinks.length - 1}@@@`;
+        }
+    );
+
+    // 4. Safe to parse Markdown Bold & Italic (No underscores or asterisks in placeholders)
     formatted = formatted.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
     formatted = formatted.replace(/___(.*?)___/g, '<strong><em>$1</em></strong>');
     formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -61,17 +82,10 @@ function parseDescription(text) {
     formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
     formatted = formatted.replace(/_(.*?)(?<!_)_{1}(?!_)/g, '<em>$1</em>');
 
-    // 3. Parse Markdown links: [Anchor Text](https://link.com)
-    formatted = formatted.replace(
-        /\[([^\]]+)\]\(((?:https?:\/\/|\/|\.\/|\.\.\/|assets\/)[^\s\)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
-    );
-
-    // 4. Parse remaining raw http/https URLs
-    formatted = formatted.replace(
-        (/(^|[\s(])(https?:\/\/[^\s\)]+)/g),
-        '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>'
-    );
+    // 5. Restore the Protected HTML Links safely back into the description
+    formatted = formatted.replace(/@@@LINK(\d+)@@@/g, (match, idx) => {
+        return protectedLinks[parseInt(idx)];
+    });
 
     return formatted;
 }
@@ -143,7 +157,8 @@ function renderUI(projects, allCategories) {
             const btn = document.createElement('button');
             btn.className = 'filter-btn';
             btn.dataset.filter = cat;
-            btn.textContent = cat.replace(/^\$/, '');
+            // robustly strip out the $ from the UI text
+            btn.textContent = cat.replace('$', '');
             filterBar.appendChild(btn);
         }
     });
@@ -265,8 +280,8 @@ function renderUI(projects, allCategories) {
                 }
             }
 
-            // 3. Category Tags (stripping leading $)
-            let tagsHtml = p.activeCategories.map(cat => `<span class="tag">${cat.replace(/^\$/, '')}</span>`).join('');
+            // 3. Category Tags (robustly stripping out the $)
+            let tagsHtml = p.activeCategories.map(cat => `<span class="tag">${cat.replace('$', '')}</span>`).join('');
 
             // Build Project Card HTML
             card.innerHTML = `
