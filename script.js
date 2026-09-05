@@ -54,15 +54,10 @@ function parseDescription(text) {
     formatted = formatted.replace(/\\n/g, '\n');
 
     // 2. Parse Markdown Bold & Italic formatting
-    // ***bold italic*** or ___bold italic___
     formatted = formatted.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
     formatted = formatted.replace(/___(.*?)___/g, '<strong><em>$1</em></strong>');
-
-    // **bold** or __bold__
     formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     formatted = formatted.replace(/__(.*?)__/g, '<strong>$1</strong>');
-
-    // *italic* or _italic_
     formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
     formatted = formatted.replace(/_(.*?)(?<!_)_{1}(?!_)/g, '<em>$1</em>');
 
@@ -93,7 +88,8 @@ async function loadProjects() {
         const headers = rows[0].map(h => h.trim());
         const dataRows = rows.slice(1).filter(r => r.length > 1 && r[0] && r[0].trim() !== '');
 
-        const categoryColumns = ['CAD', '3D Printing', 'LEGO', 'PCB Design / Electronics', 'Coding', 'Science Fair', 'Blender', 'Other'];
+        // Treat all columns beginning with $ as filter categories
+        const categoryColumns = headers.filter(h => h.startsWith('$'));
 
         let projects = dataRows.map(row => {
             let obj = {};
@@ -132,14 +128,22 @@ function renderUI(projects, allCategories) {
     const filterBar = document.getElementById('filter-bar');
 
     container.innerHTML = '';
+    filterBar.innerHTML = '';
 
-    // Create Category filter buttons dynamically
+    // Add an "All" default filter button first
+    const allBtn = document.createElement('button');
+    allBtn.className = 'filter-btn active';
+    allBtn.dataset.filter = 'All';
+    allBtn.textContent = 'All Projects';
+    filterBar.appendChild(allBtn);
+
+    // Create Category filter buttons dynamically (stripping leading $ for display)
     allCategories.forEach(cat => {
         if (projects.some(p => p.activeCategories.includes(cat))) {
             const btn = document.createElement('button');
             btn.className = 'filter-btn';
             btn.dataset.filter = cat;
-            btn.textContent = cat;
+            btn.textContent = cat.replace(/^\$/, '');
             filterBar.appendChild(btn);
         }
     });
@@ -261,14 +265,14 @@ function renderUI(projects, allCategories) {
                 }
             }
 
-            // 3. Category Tags
-            let tagsHtml = p.activeCategories.map(cat => `<span class="tag">${cat}</span>`).join('');
+            // 3. Category Tags (stripping leading $)
+            let tagsHtml = p.activeCategories.map(cat => `<span class="tag">${cat.replace(/^\$/, '')}</span>`).join('');
 
             // Build Project Card HTML
             card.innerHTML = `
                 <div class="project-header">
                     <h2 class="project-title">${p['Overall project title']}</h2>
-                    <span class="project-date">${p['Month (Range)']} ${p['Year (Range)']}</span>
+                    <span class="project-date">${p['Time Span']}</span>
                 </div>
                 ${imageHtml}
                 <div class="tags-container">${tagsHtml}</div>
