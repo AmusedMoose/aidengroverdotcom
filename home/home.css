@@ -1,0 +1,315 @@
+/* /home: floating, draggable landing page. Self-contained on purpose so the page
+   can be moved to the site root later without dragging style.css along. */
+
+:root {
+    --bg: #0d0714;
+    --card: #180e25;
+    --pill: #25133a;
+    --pill-hover: #351a54;
+    --text: #f8fafc;
+    --muted: #cdbfe8;
+    --accent: #ec4899;
+    --accent-hover: #f472b6;
+    --purple: #c084fc;
+    --border: #381a52;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    background-color: var(--bg);
+    /* faint dot grid, like a PCB prototyping board */
+    background-image: radial-gradient(circle at 1px 1px, rgba(192, 132, 252, 0.14) 1px, transparent 0);
+    background-size: 28px 28px;
+    color: var(--text);
+    font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.4;
+}
+
+/* ---------- no-JS fallback: a plain centered column ---------- */
+
+.stage {
+    --u: 22px;
+    min-height: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    padding: 2rem 1.25rem;
+}
+
+.title {
+    flex-basis: 100%;
+    text-align: center;
+    font-size: 2.5rem;
+    margin: 0;
+}
+
+.hint {
+    display: none;
+}
+
+/* ---------- physics mode ---------- */
+
+.physics,
+.physics body {
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+.physics body {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+}
+
+.physics .stage {
+    position: fixed;
+    inset: 0;
+    display: block;
+    padding: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* The name is drawn by the letter tiles; keep the real heading for screen readers. */
+.physics .title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.physics .body {
+    position: absolute;
+    left: 0;
+    top: 0;
+    touch-action: none;
+    will-change: transform;
+}
+
+.body {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: grab;
+}
+
+.physics .body:active {
+    cursor: grabbing;
+}
+
+.body:focus-visible {
+    outline: 3px solid var(--accent-hover);
+    outline-offset: 3px;
+}
+
+.physics .hint {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    opacity: 0.75;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+    z-index: 5;
+}
+
+.physics .hint.hide {
+    opacity: 0;
+}
+
+/* ---------- letter tiles (keycaps spelling the name) ---------- */
+
+.tile {
+    --tile: #ec4899;
+    --tile-dark: #9d1458;
+    --tile-ink: #fff;
+    font-size: calc(var(--u) * 1.75);
+    font-weight: 800;
+    line-height: 1;
+    min-width: 0.95em;
+    padding: 0.14em 0.2em 0.18em;
+    text-align: center;
+    color: var(--tile-ink);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--tile) 88%, #fff) 0%, var(--tile) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.24em;
+    box-shadow: 0 0.09em 0 var(--tile-dark), 0 0.18em 0.45em rgba(0, 0, 0, 0.55);
+}
+
+.tile[data-c="1"] {
+    --tile: #8b5cf6;
+    --tile-dark: #4c2a9e;
+}
+
+.tile[data-c="2"] {
+    --tile: #f3e8ff;
+    --tile-dark: #a98bd0;
+    --tile-ink: #2a123d;
+}
+
+/* ---------- portrait ---------- */
+
+.portrait {
+    position: relative;
+    width: calc(var(--u) * 5.2);
+    height: calc(var(--u) * 5.2);
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--accent);
+    background: linear-gradient(135deg, #351a54, #180e25);
+    box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.18), 0 0.4em 1.2em rgba(0, 0, 0, 0.55);
+}
+
+.portrait img,
+.portrait-fallback {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.portrait img {
+    object-fit: cover;
+    display: block;
+    color: transparent; /* hide the alt text if the photo is missing, so only the "AG" placeholder shows */
+    font-size: 0;
+}
+
+.portrait-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--u) * 1.9);
+    font-weight: 800;
+    color: var(--purple);
+    letter-spacing: -0.03em;
+}
+
+/* ---------- blurb card ---------- */
+
+.note {
+    width: min(calc(var(--u) * 15), calc(100vw - 36px));
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 5px 5px 0 rgba(236, 72, 153, 0.35), 0 10px 30px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.note-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0.55em 0.8em;
+    font: 600 calc(var(--u) * 0.55) ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--muted);
+    background: var(--pill);
+    border-bottom: 2px solid var(--border);
+}
+
+.note-bar i {
+    width: 0.7em;
+    height: 0.7em;
+    border-radius: 50%;
+    background: var(--purple);
+    opacity: 0.55;
+}
+
+.note-bar span {
+    margin-left: 0.5em;
+}
+
+.note p {
+    margin: 0;
+    padding: 0.85em 1em 1em;
+    font-size: calc(var(--u) * 0.78);
+    line-height: 1.5;
+    color: var(--muted);
+}
+
+/* ---------- link pills ---------- */
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    white-space: nowrap;
+    font-size: calc(var(--u) * 0.85);
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+    padding: 0.5em 1.1em 0.55em;
+    background: var(--pill);
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 0.14em 0 var(--border), 0 0.3em 0.7em rgba(0, 0, 0, 0.45);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.pill::after {
+    content: "\2192";
+    opacity: 0.7;
+}
+
+.pill.external::after {
+    content: "\2197";
+}
+
+.pill:hover {
+    background: var(--pill-hover);
+    border-color: var(--accent);
+}
+
+.pill.primary {
+    background: var(--accent);
+    border-color: var(--accent-hover);
+    box-shadow: 0 0.14em 0 #9d1458, 0 0.3em 0.7em rgba(0, 0, 0, 0.45);
+}
+
+.pill.primary:hover {
+    background: var(--accent-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pill {
+        transition: none;
+    }
+}
+
+.cursor-glow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(161, 10, 113, 0.15) 0%,
+        transparent 70%
+    );
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.3s ease;
+    z-index: 0;
+    opacity: 0;
+}

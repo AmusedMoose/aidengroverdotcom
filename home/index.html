@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Aiden Grover</title>
+    <meta name="theme-color" content="#0d0714">
+
+    <link rel="icon" type="image/png" href="../assets/favicon.png">
+    <link rel="stylesheet" href="../home/home.css">
+
+    <meta name="description"
+        content="Aiden Grover: mechanical engineer and founder of BrickMoose. Custom circuit boards, embedded firmware, 3D printers, CAD, and LEGO sets.">
+    <meta name="author" content="Aiden Grover">
+    <link rel="canonical" href="https://aidengrover.com/home/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aidengrover.com/home/">
+    <meta property="og:title" content="Aiden Grover">
+    <meta property="og:description"
+        content="Mechanical engineer and founder of BrickMoose. Custom circuit boards, embedded firmware, 3D printers, CAD, and LEGO sets.">
+    <meta property="og:image" content="https://aidengrover.com/assets/sandcastle.png">
+
+    <script defer src="https://cloud.umami.is/script.js"
+        data-website-id="7434b1e9-c6a0-4906-a875-d2a3e647d3a1"></script>
+</head>
+
+<body>
+
+    <div id="cursor-glow" class="cursor-glow"></div>
+
+    <!--
+        Everything with class "body" becomes a draggable physics object when JavaScript
+        runs (see home.js). Without JavaScript the page falls back to a plain centered
+        layout, so the links always work.
+
+        data-shape: "circle" | "rect" (default rect)     data-density: heavier = harder to shove
+    -->
+    <main id="stage" class="stage">
+        <h1 class="title">Aiden Grover</h1>
+
+        <div class="body portrait" data-shape="circle" data-density="2.5">
+            <!-- Drop a photo at /assets/me.png. Until it exists the "AG" placeholder shows. -->
+            <span class="portrait-fallback" aria-hidden="true">AG</span>
+            <img src="../assets/me.png" alt="Photo of Aiden Grover" draggable="false">
+        </div>
+
+        <div class="body note" data-density="1.5">
+            <div class="note-bar" aria-hidden="true"><i></i><i></i><i></i><span>about_me.txt</span></div>
+            <p>I'm Aiden, a mechanical engineer who builds things at the boundary of hardware and software: custom
+                circuit boards, embedded firmware, 3D printers, CAD models, and LEGO sets.</p>
+        </div>
+
+        <!-- Link pills. To add or reorder links just edit this list. -->
+        <a class="body pill primary" href="../" draggable="false">Portfolio</a>
+        <a class="body pill external" href="https://github.com/AmusedMoose" target="_blank" rel="noopener"
+            draggable="false">GitHub</a>
+        <a class="body pill external" href="https://www.linkedin.com/in/aidengrover" target="_blank" rel="noopener"
+            draggable="false">LinkedIn</a>
+        <a class="body pill external" href="https://www.brickmoose.com" target="_blank" rel="noopener"
+            draggable="false">BrickMoose</a>
+        <a class="body pill" href="mailto:contact@aidengrover.com" draggable="false">Email</a>
+    </main>
+
+    <div class="hint" id="hint" aria-hidden="true">psst: everything here is draggable</div>
+
+    <script src="../home/physics.js"></script>
+    <script src="../home/home.js"></script>
+</body>
+
+</html>
