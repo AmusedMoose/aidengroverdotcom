@@ -11,7 +11,7 @@
     // Bump this up to make everything settle faster, down to make it glide longer.
     var DRAG = 0.35;
     // Gentle starting drift: each object is given just enough speed to coast about this far (px).
-    var DRIFT_MIN = 40, DRIFT_MAX = 90, DRIFT_SPEED_CAP = 70;
+    var DRIFT_MIN = 1, DRIFT_MAX = 30, DRIFT_SPEED_CAP = 50;
 
     var stage = document.getElementById('stage');
     var hint = document.getElementById('hint');
@@ -117,7 +117,7 @@
     function arrange() {
         fit();
         var letters = items.filter(function (it) { return it.kind === 'letter'; });
-        var gap = u * 0.2, spaceGap = u * 0.95;
+        var gap = u * 0.2, spaceGap = u * 2;
 
         function rowWidth(list) {
             return list.reduce(function (s, it) { return s + it.el.offsetWidth; }, 0) + gap * Math.max(0, list.length - 1);
